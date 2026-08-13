@@ -1,0 +1,311 @@
+/* Permanent Sleek Dark Mode Design System for BR Events */
+:root {
+  --color-bg-main: #12111A;
+  --color-bg-card: rgba(29, 26, 43, 0.92);
+  --color-bg-card-hover: rgba(40, 36, 60, 0.96);
+  --color-bg-input: #171524;
+  
+  --color-berry: #D81E5B;
+  --color-berry-dark: #9E2A2B;
+  --color-berry-glow: rgba(216, 30, 91, 0.4);
+  --color-pink-vivid: #FF4D7D;
+  --color-pink-soft: #FDF0F5;
+  --color-emerald: #2A9D8F;
+  --color-emerald-light: rgba(42, 157, 143, 0.15);
+  
+  --color-text-main: #F8F9FA;
+  --color-text-muted: #A0AEC0;
+  --color-text-dim: #718096;
+  
+  --border-soft: rgba(216, 30, 91, 0.22);
+  --border-glass: rgba(255, 255, 255, 0.08);
+
+  /* Exact gradient matching logo: #D81E5B -> #FF4D7D -> #FDF0F5 -> #2A9D8F */
+  --gradient-brand: linear-gradient(90deg, #D81E5B 0%, #FF4D7D 35%, #FDF0F5 70%, #2A9D8F 100%);
+  --gradient-berry: linear-gradient(135deg, #9E2A2B 0%, #D81E5B 100%);
+  --gradient-dark-card: linear-gradient(135deg, #1D1A2B 0%, #151322 100%);
+  --gradient-emerald: linear-gradient(135deg, #2A9D8F 0%, #3BCEAC 100%);
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 24px rgba(216, 30, 91, 0.35);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-main);
+  color: var(--color-text-main);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 90px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text-main);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Brand Logo styling */
+.brand-logo-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  user-select: none;
+}
+
+.brand-logo-br {
+  color: #FFFFFF;
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
+}
+
+.brand-logo-events {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Responsive Container across widescreen monitors */
+.app-max-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+
+/* Hero Banner on Dashboard */
+.dashboard-hero-banner {
+  background: linear-gradient(135deg, rgba(29, 26, 43, 0.95) 0%, rgba(18, 17, 26, 0.98) 100%);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
+.dashboard-hero-banner::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 250px;
+  height: 250px;
+  background: var(--color-berry);
+  filter: blur(100px);
+  opacity: 0.25;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-logo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-welcome-title {
+  font-size: 1.8rem;
+  color: var(--color-text-main);
+  margin-top: 4px;
+}
+
+.hero-welcome-subtitle {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  max-width: 800px;
+}
+
+/* Glass Cards */
+.glass-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(216, 30, 91, 0.4);
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--gradient-berry);
+  color: var(--color-text-main);
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(216, 30, 91, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(216, 30, 91, 0.55);
+  opacity: 0.98;
+}
+
+.btn-emerald {
+  background: var(--gradient-emerald);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(42, 157, 143, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-emerald:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(42, 157, 143, 0.45);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-main);
+  border: 1px solid var(--border-soft);
+  padding: 10px 18px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(216, 30, 91, 0.15);
+  border-color: var(--color-berry);
+}
+
+.footer-link {
+  color: var(--color-pink-vivid);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.footer-link:hover {
+  color: #FFFFFF;
+  text-shadow: 0 0 10px var(--color-berry);
+}
+
+/* Badges */
+.badge-emerald {
+  background: var(--color-emerald-light);
+  color: #3BCEAC;
+  border: 1px solid rgba(59, 206, 172, 0.3);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-berry {
+  background: rgba(216, 30, 91, 0.18);
+  color: #FF69B4;
+  border: 1px solid rgba(216, 30, 91, 0.4);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-gray {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(216, 30, 91, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-berry);
+}
