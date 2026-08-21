@@ -9,11 +9,69 @@
 
       <!-- Header Action Group -->
       <div class="header-actions">
+        <!-- Notification Bell Button -->
+        <div class="notifications-wrapper">
+          <button 
+            @click="showNotificationsPopover = !showNotificationsPopover" 
+            class="btn-ghost-sm btn-bell-relative"
+            title="Notificaciones"
+          >
+            <Bell class="btn-icon-sm" />
+            <span v-if="unreadCount > 0" class="notif-badge-pill">{{ unreadCount }}</span>
+          </button>
+
+          <!-- Notifications Dropdown Popover -->
+          <div v-if="showNotificationsPopover" class="notif-dropdown glass-card animate-fade-in">
+            <div class="notif-header">
+              <strong>🔔 Notificaciones ({{ store.notifications.length }})</strong>
+              <button @click="showNotificationsPopover = false" class="btn-close-sm">✕</button>
+            </div>
+
+            <div v-if="store.notifications.length === 0" class="empty-notif">
+              <p>No tienes notificaciones recientes.</p>
+            </div>
+
+            <div v-else class="notif-list">
+              <div 
+                v-for="n in store.notifications" 
+                :key="n.id"
+                :class="['notif-item', { unread: !n.read }]"
+                @click="handleNotificationClick(n)"
+              >
+                <div class="notif-item-header">
+                  <span class="notif-title">{{ n.title }}</span>
+                  <span class="notif-time">{{ n.createdAt }}</span>
+                </div>
+                <p class="notif-message">{{ n.message }}</p>
+
+                <!-- Quick RSVP Actions inside notification -->
+                <div v-if="n.dateText" class="notif-quick-rsvp" @click.stop>
+                  <span class="rsvp-prompt">Confirmar asistencia:</span>
+                  <div class="quick-rsvp-btns">
+                    <button @click="quickRSVP('confirmed')" class="btn-quick btn-q-yes">🎉 Sí</button>
+                    <button @click="quickRSVP('maybe')" class="btn-quick btn-q-maybe">🤔 Tal vez</button>
+                    <button @click="quickRSVP('declined')" class="btn-quick btn-q-no">😢 No</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="store.notifications.length > 0" class="notif-footer">
+              <button @click="store.clearNotifications()" class="btn-clear-notif">
+                Limpiar notificaciones
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Landing Page Toggle Button -->
         <button @click="$emit('open-landing')" class="btn-ghost-sm" title="Ver Landing Page">
           <Globe class="btn-icon-sm" />
           <span class="desktop-only">Inicio</span>
         </button>
+
+        <!-- Theme Switcher Control -->
+        <ThemeSwitcher />
 
         <!-- Logged In User Avatar / Initials Button -->
         <template v-if="store.currentUser">
@@ -84,10 +142,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { store } from '../lib/supabase.js'
+import { toast } from '../lib/toast.js'
 import ColonIcon from './ColonIcon.vue'
-import { Calendar, Vote, Image, Award, Globe, LogIn, LogOut, Smartphone } from 'lucide-vue-next'
+import ThemeSwitcher from './ThemeSwitcher.vue'
+import { Calendar, Vote, Image, Award, Globe, LogIn, LogOut, Smartphone, Bell, ShieldCheck } from 'lucide-vue-next'
 
 defineProps({
   activeTab: {
@@ -98,12 +158,19 @@ defineProps({
 
 const emit = defineEmits(['select-tab', 'open-profile', 'open-landing', 'open-auth'])
 
+const showNotificationsPopover = ref(false)
+
+const unreadCount = computed(() => {
+  return store.notifications.filter(n => !n.read).length
+})
+
 const tabs = [
   { id: 'turnero', label: 'Turnero', icon: Calendar },
   { id: 'evento', label: 'Evento', icon: Vote },
-  { id: 'gastos', label: 'Gastos ₡', icon: ColonIcon },
-  { id: 'galeria', label: 'Fotos HD', icon: Image },
-  { id: 'recap', label: 'Recap', icon: Award }
+  { id: 'gastos', label: 'Gastos', icon: ColonIcon },
+  { id: 'galeria', label: 'Fotos', icon: Image },
+  { id: 'recap', label: 'Recap', icon: Award },
+  { id: 'admin', label: 'Admin', icon: ShieldCheck }
 ]
 
 const showPwaBanner = ref(true)
@@ -122,6 +189,18 @@ const logout = () => {
   emit('open-landing')
 }
 
+const handleNotificationClick = (n) => {
+  store.markNotificationRead(n.id)
+  emit('select-tab', 'evento')
+  showNotificationsPopover.value = false
+}
+
+const quickRSVP = (status) => {
+  store.respondAttendance(status)
+  emit('select-tab', 'evento')
+  showNotificationsPopover.value = false
+}
+
 const installPwa = async () => {
   if (deferredPrompt.value) {
     deferredPrompt.value.prompt()
@@ -130,7 +209,7 @@ const installPwa = async () => {
       showPwaBanner.value = false
     }
   } else {
-    alert('Para instalar en iPhone/Android, toca "Compartir" en tu navegador y luego "Agregar a pantalla de inicio".')
+    toast.info('Para instalar en iPhone/Android, toca "Compartir" en tu navegador y luego "Agregar a pantalla de inicio".', 6000)
     showPwaBanner.value = false
   }
 }
@@ -183,6 +262,177 @@ const dismissPwa = () => {
   transition: all 0.2s ease;
 }
 
+.btn-bell-relative {
+  position: relative;
+}
+
+.notif-badge-pill {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--gradient-berry);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 900;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(216, 30, 91, 0.6);
+  border: 1px solid var(--color-bg-card);
+}
+
+/* Notifications Popover */
+.notifications-wrapper {
+  position: relative;
+}
+
+.notif-dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notif-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-glass);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--color-berry);
+}
+
+.btn-close-sm {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.empty-notif {
+  padding: 24px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.notif-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-glass);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.2s ease;
+}
+
+.notif-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.notif-item.unread {
+  background: rgba(216, 30, 91, 0.08);
+  border-left: 3px solid var(--color-berry);
+}
+
+.notif-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notif-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.notif-time {
+  font-size: 0.7rem;
+  color: var(--color-text-dim);
+}
+
+.notif-message {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.notif-quick-rsvp {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rsvp-prompt {
+  font-size: 0.72rem;
+  color: var(--color-emerald);
+  font-weight: 600;
+}
+
+.quick-rsvp-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-quick {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  background: var(--color-bg-input);
+  color: white;
+}
+
+.btn-q-yes:hover { background: var(--gradient-emerald); }
+.btn-q-maybe:hover { background: #d97706; }
+.btn-q-no:hover { background: #b91c1c; }
+
+.notif-footer {
+  padding: 8px;
+  text-align: center;
+  border-top: 1px solid var(--border-glass);
+}
+
+.btn-clear-notif {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.btn-clear-notif:hover {
+  color: var(--color-berry);
+}
+
 .btn-ghost-sm:hover, .btn-ghost-sm.active {
   background: var(--gradient-berry);
   color: white;
@@ -194,7 +444,7 @@ const dismissPwa = () => {
   height: 15px;
 }
 
-/* Header Avatar / Initials ONLY (No full name text rendered) */
+/* Header Avatar / Initials */
 .header-profile-btn {
   background: none;
   border: none;
@@ -308,8 +558,8 @@ const dismissPwa = () => {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: white;
+  background: rgba(42, 157, 143, 0.18);
+  color: #3BCEAC;
 }
 
 .nav-item.active {
@@ -369,6 +619,42 @@ const dismissPwa = () => {
 }
 
 @media (max-width: 768px) {
+  .app-header {
+    padding: 8px 12px;
+  }
+
+  .header-content {
+    gap: 8px;
+  }
+
+  .brand-logo-br, .brand-logo-events {
+    font-size: 1.15rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .btn-ghost-sm {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .header-avatar-img, .header-initials-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .notif-dropdown {
+    position: fixed;
+    top: 54px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 75vh;
+  }
+
   .desktop-nav {
     display: none;
   }
@@ -376,7 +662,7 @@ const dismissPwa = () => {
     display: flex;
   }
   .desktop-only {
-    display: none;
+    display: none !important;
   }
 }
 </style>

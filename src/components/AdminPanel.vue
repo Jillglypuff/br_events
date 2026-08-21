@@ -64,8 +64,8 @@
                 </div>
               </td>
               <td><span class="badge-gray">{{ f.shirtSize || 'M' }}</span></td>
-              <td>{{ f.age || 25 }} años</td>
-              <td>{{ f.province || 'San José' }}, {{ f.canton || 'Escazú' }}</td>
+              <td>{{ f.age ? f.age + ' años' : '-' }}</td>
+              <td>{{ [f.province, f.canton].filter(Boolean).join(', ') || '-' }}</td>
               <td>
                 <span :class="f.role === 'admin' ? 'badge-berry' : 'badge-emerald'">
                   {{ f.role === 'admin' ? 'Admin' : 'Integrante' }}
@@ -180,6 +180,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { store } from '../lib/supabase.js'
+import { toast } from '../lib/toast.js'
 import { ShieldCheck, Users, Calendar, DollarSign, UserPlus, RotateCcw, Trash2 } from 'lucide-vue-next'
 
 const currentTab = ref('amigas')
@@ -200,7 +201,7 @@ const adminTabs = [
 const resetTestData = () => {
   if (confirm('¿Deseas limpiar todos los datos para realizar pruebas desde cero?')) {
     store.resetAllData()
-    alert('¡Datos limpiados exitosamente! La aplicación está lista para tus pruebas.')
+    toast.success('¡Datos limpiados exitosamente! La aplicación está lista para tus pruebas.')
   }
 }
 
@@ -215,7 +216,7 @@ const submitAssign = () => {
   if (selectedMonth.value) {
     store.adminAssignMonth(selectedMonth.value.id, assignForm.organizerName, assignForm.theme)
     showAssignModal.value = false
-    alert(`Mes ${selectedMonth.value.name} asignado exitosamente a ${assignForm.organizerName}`)
+    toast.success(`Mes ${selectedMonth.value.name} asignado exitosamente a ${assignForm.organizerName}`)
   }
 }
 

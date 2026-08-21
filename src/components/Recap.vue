@@ -20,71 +20,83 @@
       </div>
     </div>
 
-    <!-- Awards & Stats Grid -->
-    <div class="awards-grid">
-      <div class="award-card glass-card">
-        <div class="award-icon-box crown">
-          <Crown class="award-icon" />
-        </div>
-        <div class="award-details">
-          <span class="award-title">Reina de la Organización</span>
-          <strong class="award-winner">María Celeste</strong>
-          <p class="award-desc">2 eventos organizados con éxito.</p>
-        </div>
-      </div>
-
-      <div class="award-card glass-card">
-        <div class="award-icon-box camera">
-          <Camera class="award-icon" />
-        </div>
-        <div class="award-details">
-          <span class="award-title">Fiesta con Más Fotos</span>
-          <strong class="award-winner">Noche Tropical (Enero)</strong>
-          <p class="award-desc">Más de 45 fotos compartidas en alta calidad.</p>
-        </div>
-      </div>
-
-      <div class="award-card glass-card">
-        <div class="award-icon-box star">
-          <Sparkles class="award-icon" />
-        </div>
-        <div class="award-details">
-          <span class="award-title">Asistencia Perfecta</span>
-          <strong class="award-winner">Sofía & Laura</strong>
-          <p class="award-desc">Presentes en el 100% de las reuniones del año.</p>
-        </div>
-      </div>
+    <!-- State when NO completed events exist yet -->
+    <div v-if="completedMonths.length === 0" class="empty-recap-box glass-card animate-fade-in">
+      <Award class="empty-recap-icon" />
+      <h3>Línea de Tiempo & Premiaciones {{ currentYear }}</h3>
+      <p>Aún no hay eventos marcados como realizados en este ciclo.</p>
+      <p class="sub-hint">
+        Conforme las organizadoras lleven a cabo sus reuniones y se concluyan los meses, aquí aparecerán automáticamente las estadísticas reales, la reina de la organización y la galería de recuerdos.
+      </p>
     </div>
 
-    <!-- Timeline of Completed Events -->
-    <div class="timeline-section glass-card">
-      <h3>Línea de Tiempo de Eventos {{ currentYear }}</h3>
-
-      <div class="timeline-items">
-        <div 
-          v-for="m in completedMonths" 
-          :key="m.id"
-          class="timeline-item"
-        >
-          <div class="timeline-dot">
-            <CheckCircle2 class="dot-icon" />
+    <template v-else>
+      <!-- Awards & Stats Grid (ONLY SHOWN WITH REAL DATA) -->
+      <div class="awards-grid">
+        <div v-if="topOrganizer" class="award-card glass-card">
+          <div class="award-icon-box crown">
+            <Crown class="award-icon" />
           </div>
+          <div class="award-details">
+            <span class="award-title">Reina de la Organización</span>
+            <strong class="award-winner">{{ topOrganizer.name }}</strong>
+            <p class="award-desc">{{ topOrganizer.count }} {{ topOrganizer.count === 1 ? 'evento completado' : 'eventos completados' }}.</p>
+          </div>
+        </div>
 
-          <div class="timeline-content">
-            <div class="timeline-header">
-              <h4>{{ m.name }} — {{ m.theme }}</h4>
-              <span class="badge-emerald">Concluido</span>
-            </div>
+        <div class="award-card glass-card">
+          <div class="award-icon-box camera">
+            <Camera class="award-icon" />
+          </div>
+          <div class="award-details">
+            <span class="award-title">Recuerdos en la Galería</span>
+            <strong class="award-winner">{{ store.photos.length }} Fotos</strong>
+            <p class="award-desc">Momentos guardados en el álbum del grupo.</p>
+          </div>
+        </div>
 
-            <p class="timeline-organizer">Organizado por <strong>{{ m.organizerName }}</strong></p>
-
-            <div class="timeline-preview" v-if="m.image">
-              <img :src="m.image" alt="Preview Evento" class="preview-img" />
-            </div>
+        <div class="award-card glass-card">
+          <div class="award-icon-box star">
+            <Sparkles class="award-icon" />
+          </div>
+          <div class="award-details">
+            <span class="award-title">Eventos Concluidos</span>
+            <strong class="award-winner">{{ completedCount }} {{ completedCount === 1 ? 'Evento' : 'Eventos' }}</strong>
+            <p class="award-desc">Reuniones llevadas a cabo con éxito este año.</p>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Timeline of Completed Events (ONLY SHOWN WITH REAL DATA) -->
+      <div class="timeline-section glass-card">
+        <h3>Línea de Tiempo de Eventos Realizados {{ currentYear }}</h3>
+
+        <div class="timeline-items">
+          <div 
+            v-for="m in completedMonths" 
+            :key="m.id"
+            class="timeline-item"
+          >
+            <div class="timeline-dot">
+              <CheckCircle2 class="dot-icon" />
+            </div>
+
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <h4>{{ m.name }} — {{ m.theme || 'Evento Temático' }}</h4>
+                <span class="badge-emerald">Concluido</span>
+              </div>
+
+              <p class="timeline-organizer">Organizado por <strong>{{ m.organizerName || 'Organizadora BR' }}</strong></p>
+
+              <div class="timeline-preview" v-if="m.image">
+                <img :src="m.image" alt="Preview Evento" class="preview-img" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -100,6 +112,24 @@ const completedMonths = computed(() => {
 })
 
 const completedCount = computed(() => completedMonths.value.length)
+
+const topOrganizer = computed(() => {
+  if (completedMonths.value.length === 0) return null
+  const counts = {}
+  completedMonths.value.forEach(m => {
+    const org = m.organizerName || 'Organizadora'
+    counts[org] = (counts[org] || 0) + 1
+  })
+  let maxOrg = null
+  let maxCount = 0
+  for (const org in counts) {
+    if (counts[org] > maxCount) {
+      maxCount = counts[org]
+      maxOrg = org
+    }
+  }
+  return maxOrg ? { name: maxOrg, count: maxCount } : null
+})
 </script>
 
 <style scoped>
@@ -170,6 +200,34 @@ const completedCount = computed(() => completedMonths.value.length)
   height: 100%;
   background: var(--gradient-brand);
   transition: width 0.4s ease;
+}
+
+.empty-recap-box {
+  padding: 40px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--border-soft);
+}
+
+.empty-recap-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-berry);
+}
+
+.empty-recap-box h3 {
+  font-size: 1.25rem;
+  color: var(--color-text-main);
+}
+
+.sub-hint {
+  font-size: 0.86rem;
+  color: var(--color-text-dim);
+  max-width: 600px;
 }
 
 /* Awards Grid */

@@ -10,6 +10,7 @@
           <span class="brand-logo-br">BR</span>
           <span class="brand-logo-events">Events</span>
         </div>
+        <ThemeSwitcher />
       </div>
 
       <!-- Hero Main Content -->
@@ -87,6 +88,7 @@
 import { ref, onMounted } from 'vue'
 import { gsap } from 'gsap'
 import { ArrowRight, Heart, HeartHandshake, Activity } from 'lucide-vue-next'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 defineEmits(['open-auth'])
 
@@ -138,8 +140,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 32px;
-  border: 1px solid rgba(216, 30, 91, 0.35);
-  background: linear-gradient(135deg, rgba(29, 26, 43, 0.98) 0%, rgba(18, 17, 26, 0.95) 100%);
+  border: 1px solid var(--border-soft);
+  background: var(--gradient-dark-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
@@ -162,9 +164,10 @@ onMounted(() => {
 .hero-card-header {
   width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .hero-card-body {

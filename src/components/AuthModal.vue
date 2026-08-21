@@ -88,6 +88,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { store } from '../lib/supabase.js'
+import { toast } from '../lib/toast.js'
 import { LogIn, UserPlus } from 'lucide-vue-next'
 
 const emit = defineEmits(['close', 'auth-success'])
@@ -110,7 +111,7 @@ const registerForm = reactive({
 const handleLogin = () => {
   if (loginForm.email) {
     store.login(loginForm.email, loginForm.password)
-    alert(`¡Bienvenida a BR Events, ${store.currentUser.name}!`)
+    toast.success(`¡Bienvenida a BR Events, ${store.currentUser.name}!`)
     emit('auth-success')
     emit('close')
   }
@@ -119,7 +120,7 @@ const handleLogin = () => {
 const handleRegister = async () => {
   if (registerForm.name && registerForm.email) {
     await store.register(registerForm)
-    alert(`¡Cuenta creada con éxito! Bienvenida a BR Events, ${registerForm.name}.`)
+    toast.success(`¡Cuenta creada con éxito! Bienvenida a BR Events, ${registerForm.name}.`)
     emit('auth-success')
     emit('close')
   }

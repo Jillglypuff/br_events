@@ -31,9 +31,10 @@
 
       <div class="stat-card glass-card">
         <span class="stat-label">Estado de Cuentas</span>
-        <span class="badge-emerald">
-          <CheckCircle2 class="icon-sm" />
-          {{ settlements.length === 0 ? 'Cuentas al día' : `${settlementCount} pagos pendientes` }}
+        <span :class="pendingExpensesCount > 0 ? 'badge-amber' : 'badge-emerald'">
+          <Clock v-if="pendingExpensesCount > 0" class="icon-sm" />
+          <CheckCircle2 v-else class="icon-sm" />
+          {{ pendingExpensesCount > 0 ? `${pendingExpensesCount} gastos pendientes de comprobante` : 'Cuentas al día' }}
         </span>
       </div>
     </div>
@@ -49,7 +50,7 @@
 
         <div v-if="settlements.length === 0" class="empty-settlements">
           <CheckCircle2 class="big-check" />
-          <p>¡Todas las cuentas están saldadas en Colones! 🎉</p>
+          <p>¡Todas las cuentas están saldadas en Colones!</p>
         </div>
 
         <div v-else class="settlement-list">
@@ -61,9 +62,6 @@
 
             <div class="settlement-action">
               <span class="settlement-amount">₡{{ Math.round(s.amount).toLocaleString() }} CRC</span>
-              <span class="badge-emerald">
-                <Check class="icon-xs" /> Aprobado
-              </span>
             </div>
           </div>
         </div>
@@ -102,8 +100,24 @@
 
             <div class="expense-price-box">
               <strong class="expense-price">₡{{ exp.amount.toLocaleString() }} CRC</strong>
-              <span class="badge-emerald">Confirmado</span>
+              
+              <!-- DYNAMIC BADGE (PENDING VS APPROVED) -->
+              <span v-if="exp.status === 'approved' || exp.status === 'confirmed'" class="badge-emerald">
+                <CheckCircle2 class="icon-xs" /> Verificado
+              </span>
+              <button 
+                v-else 
+                @click="openVerifyModal(exp)"
+                class="badge-amber btn-verify-action" 
+                title="Subir comprobante para verificar"
+              >
+                <Clock class="icon-xs" /> Pendiente de comprobante
+              </button>
             </div>
+          </div>
+
+          <div v-if="store.expenses.length === 0" class="empty-expenses">
+            <p>No hay gastos registrados para este evento aún.</p>
           </div>
         </div>
       </div>
@@ -153,9 +167,37 @@
 
           <div class="modal-actions">
             <button type="button" @click="showAddModal = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary">Guardar y Dividir Cuenta</button>
+            <button type="submit" class="btn-primary">Registrar Gasto (Pendiente)</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal: Subir Comprobante y Confirmar Gasto -->
+    <div v-if="selectedExpenseForVerify" class="modal-overlay" @click.self="selectedExpenseForVerify = null">
+      <div class="modal-card glass-card animate-fade-in">
+        <div class="modal-header">
+          <h3>Adjuntar Comprobante de Pago</h3>
+          <button @click="selectedExpenseForVerify = null" class="btn-close">✕</button>
+        </div>
+
+        <div class="modal-form">
+          <p class="verify-hint">
+            Gasto: <strong>{{ selectedExpenseForVerify.description }}</strong> (₡{{ selectedExpenseForVerify.amount.toLocaleString() }} CRC pagado por {{ selectedExpenseForVerify.paidBy }})
+          </p>
+
+          <div class="form-group">
+            <label>Subir foto del comprobante / factura / SINPE</label>
+            <input type="file" ref="receiptInputRef" accept="image/*" class="form-input" />
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" @click="selectedExpenseForVerify = null" class="btn-secondary">Cancelar</button>
+            <button type="button" @click="confirmVerify" class="btn-emerald">
+              <CheckCircle2 class="btn-icon-sm" /> Verificación Completada
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -166,12 +208,15 @@ import { ref, computed } from 'vue'
 import { store } from '../lib/supabase.js'
 import ColonIcon from './ColonIcon.vue'
 import confetti from 'canvas-confetti'
-import { PlusCircle, CheckCircle2, Receipt, ListOrdered, Check } from 'lucide-vue-next'
+import { PlusCircle, CheckCircle2, Receipt, ListOrdered, Clock, Check } from 'lucide-vue-next'
 
 const showAddModal = ref(false)
+const selectedExpenseForVerify = ref(null)
+const receiptInputRef = ref(null)
+
 const newExpense = ref({
   description: '',
-  paidBy: store.currentUser.name,
+  paidBy: store.currentUser ? store.currentUser.name : '',
   amount: ''
 })
 
@@ -184,6 +229,10 @@ const totalExpense = computed(() => {
 const perPersonShare = computed(() => {
   if (friendsCount.value === 0) return 0
   return totalExpense.value / friendsCount.value
+})
+
+const pendingExpensesCount = computed(() => {
+  return store.expenses.filter(e => e.status === 'pending').length
 })
 
 const friendBalances = computed(() => {
@@ -239,19 +288,27 @@ const settlements = computed(() => {
   return results
 })
 
-const settlementCount = computed(() => settlements.value.length)
-
 const submitExpense = () => {
   store.addExpense(newExpense.value)
   showAddModal.value = false
-  newExpense.value = { description: '', paidBy: store.currentUser.name, amount: '' }
-  
-  confetti({
-    particleCount: 40,
-    spread: 50,
-    origin: { y: 0.6 },
-    colors: ['#2A9D8F', '#D81E5B']
-  })
+  newExpense.value = { description: '', paidBy: store.currentUser ? store.currentUser.name : '', amount: '' }
+}
+
+const openVerifyModal = (exp) => {
+  selectedExpenseForVerify.value = exp
+}
+
+const confirmVerify = async () => {
+  if (selectedExpenseForVerify.value) {
+    let receiptUrl = ''
+    const file = receiptInputRef.value?.files?.[0]
+    if (file) {
+      receiptUrl = await store.uploadImage(file)
+    }
+    store.confirmExpensePayment(selectedExpenseForVerify.value.id, receiptUrl)
+    selectedExpenseForVerify.value = null
+    confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } })
+  }
 }
 </script>
 
@@ -314,6 +371,29 @@ const submitExpense = () => {
   color: var(--color-text-dim);
 }
 
+.badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.btn-verify-action {
+  cursor: pointer;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  transition: transform 0.15s ease;
+}
+
+.btn-verify-action:hover {
+  transform: scale(1.05);
+}
+
 .icon-sm {
   width: 14px;
   height: 14px;
@@ -350,10 +430,12 @@ const submitExpense = () => {
   height: 22px;
 }
 
-.empty-settlements {
+.empty-settlements, .empty-expenses {
   text-align: center;
   padding: 30px;
   color: #3BCEAC;
+  font-style: italic;
+  font-size: 0.88rem;
 }
 
 .big-check {
@@ -485,11 +567,17 @@ const submitExpense = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 4px;
 }
 
 .expense-price {
   font-family: var(--font-heading);
   color: var(--color-emerald);
+}
+
+.verify-hint {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
 }
 
 /* Modal */
