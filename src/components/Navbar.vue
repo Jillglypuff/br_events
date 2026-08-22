@@ -23,7 +23,7 @@
           <!-- Notifications Dropdown Popover -->
           <div v-if="showNotificationsPopover" class="notif-dropdown glass-card animate-fade-in">
             <div class="notif-header">
-              <strong>🔔 Notificaciones ({{ store.notifications.length }})</strong>
+              <strong>Notificaciones ({{ store.notifications.length }})</strong>
               <button @click="showNotificationsPopover = false" class="btn-close-sm">✕</button>
             </div>
 
@@ -39,20 +39,10 @@
                 @click="handleNotificationClick(n)"
               >
                 <div class="notif-item-header">
-                  <span class="notif-title">{{ n.title }}</span>
+                  <span class="notif-title">{{ stripEmojis(n.title) }}</span>
                   <span class="notif-time">{{ n.createdAt }}</span>
                 </div>
-                <p class="notif-message">{{ n.message }}</p>
-
-                <!-- Quick RSVP Actions inside notification -->
-                <div v-if="n.dateText" class="notif-quick-rsvp" @click.stop>
-                  <span class="rsvp-prompt">Confirmar asistencia:</span>
-                  <div class="quick-rsvp-btns">
-                    <button @click="quickRSVP('confirmed')" class="btn-quick btn-q-yes">🎉 Sí</button>
-                    <button @click="quickRSVP('maybe')" class="btn-quick btn-q-maybe">🤔 Tal vez</button>
-                    <button @click="quickRSVP('declined')" class="btn-quick btn-q-no">😢 No</button>
-                  </div>
-                </div>
+                <p class="notif-message">{{ stripEmojis(n.message) }}</p>
               </div>
             </div>
 
@@ -164,14 +154,25 @@ const unreadCount = computed(() => {
   return store.notifications.filter(n => !n.read).length
 })
 
-const tabs = [
-  { id: 'turnero', label: 'Turnero', icon: Calendar },
-  { id: 'evento', label: 'Evento', icon: Vote },
-  { id: 'gastos', label: 'Gastos', icon: ColonIcon },
-  { id: 'galeria', label: 'Fotos', icon: Image },
-  { id: 'recap', label: 'Recap', icon: Award },
-  { id: 'admin', label: 'Admin', icon: ShieldCheck }
-]
+const tabs = computed(() => {
+  const list = [
+    { id: 'turnero', label: 'Turnero', icon: Calendar },
+    { id: 'evento', label: 'Evento', icon: Vote },
+    { id: 'gastos', label: 'Gastos', icon: ColonIcon },
+    { id: 'galeria', label: 'Fotos', icon: Image },
+    { id: 'recap', label: 'Recap', icon: Award }
+  ]
+
+  const isAdmin = store.currentUser && (
+    store.currentUser.role?.toLowerCase() === 'admin'
+  )
+
+  if (isAdmin) {
+    list.push({ id: 'admin', label: 'Admin', icon: ShieldCheck })
+  }
+
+  return list
+})
 
 const showPwaBanner = ref(true)
 const deferredPrompt = ref(null)
@@ -189,14 +190,13 @@ const logout = () => {
   emit('open-landing')
 }
 
-const handleNotificationClick = (n) => {
-  store.markNotificationRead(n.id)
-  emit('select-tab', 'evento')
-  showNotificationsPopover.value = false
+const stripEmojis = (str) => {
+  if (!str) return ''
+  return str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}]/gu, '').trim()
 }
 
-const quickRSVP = (status) => {
-  store.respondAttendance(status)
+const handleNotificationClick = (n) => {
+  store.markNotificationRead(n.id)
   emit('select-tab', 'evento')
   showNotificationsPopover.value = false
 }
@@ -234,7 +234,7 @@ const dismissPwa = () => {
 }
 
 .header-content {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   align-items: center;

@@ -6,6 +6,8 @@
       <LandingPage 
         v-if="showLanding"
         @open-auth="showAuthModal = true"
+        @open-profile="showProfileModal = true"
+        @enter-dashboard="showLanding = false"
       />
 
       <!-- App Dashboard Views (Visible after login / registration) -->

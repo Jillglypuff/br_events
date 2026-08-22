@@ -50,6 +50,12 @@
       </div>
     </div>
 
+    <!-- Ad Banner at the top of available months -->
+    <AdBanner 
+      location="turnero" 
+      @open-request-modal="showAdRequestModal = true" 
+    />
+
     <!-- Months Grid (Hides past months of current year) -->
     <div class="months-grid">
       <div 
@@ -173,6 +179,12 @@
         </form>
       </div>
     </div>
+
+    <!-- Ad Request Modal -->
+    <AdRequestModal 
+      v-if="showAdRequestModal" 
+      @close="showAdRequestModal = false" 
+    />
   </div>
 </template>
 
@@ -182,8 +194,12 @@ import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
 import confetti from 'canvas-confetti'
 import { CalendarCheck, HeartHandshake, Sparkles, User, Check, CheckCircle2, Clock, Upload, Trash2, X } from 'lucide-vue-next'
+import AdBanner from './AdBanner.vue'
+import AdRequestModal from './AdRequestModal.vue'
 
 const emit = defineEmits(['view-active-event'])
+
+const showAdRequestModal = ref(false)
 
 const selectMonthEvent = (month) => {
   store.currentEvent.organizer = month.organizerName || 'Sin Asignar'

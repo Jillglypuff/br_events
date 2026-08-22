@@ -98,6 +98,34 @@ CREATE TABLE IF NOT EXISTS checklists (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS sponsorships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sponsor_name TEXT NOT NULL,
+  contact_name TEXT,
+  contact_phone TEXT,
+  month_name TEXT DEFAULT 'General',
+  type TEXT DEFAULT 'Regalías y Productos',
+  product_description TEXT,
+  amount NUMERIC(12,2) DEFAULT 0,
+  status TEXT DEFAULT 'Confirmado',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ad_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  website_url TEXT,
+  banner_url TEXT,
+  start_date DATE DEFAULT CURRENT_DATE,
+  end_date DATE,
+  active BOOLEAN DEFAULT true,
+  location TEXT DEFAULT 'all',
+  status TEXT DEFAULT 'approved',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE polls ENABLE ROW LEVEL SECURITY;
@@ -107,6 +135,8 @@ ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE carpooling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE checklists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sponsorships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_campaigns ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Acceso Publico Users" ON users;
 CREATE POLICY "Acceso Publico Users" ON users FOR ALL USING (true) WITH CHECK (true);
@@ -134,6 +164,12 @@ CREATE POLICY "Acceso Publico Carpooling" ON carpooling FOR ALL USING (true) WIT
 
 DROP POLICY IF EXISTS "Acceso Publico Checklists" ON checklists;
 CREATE POLICY "Acceso Publico Checklists" ON checklists FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso Publico Sponsorships" ON sponsorships;
+CREATE POLICY "Acceso Publico Sponsorships" ON sponsorships FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acceso Publico AdCampaigns" ON ad_campaigns;
+CREATE POLICY "Acceso Publico AdCampaigns" ON ad_campaigns FOR ALL USING (true) WITH CHECK (true);
 
 -- ====================================================================
 -- BUCKET DE ALMACENAMIENTO DE IMÁGENES (SUPABASE STORAGE)

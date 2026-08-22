@@ -18,22 +18,32 @@
 
     <!-- Photos Grid -->
     <div class="photos-grid">
-      <div 
-        v-for="photo in store.photos" 
-        :key="photo.id" 
-        class="photo-card glass-card"
-        @click="openLightbox(photo)"
-      >
-        <img :src="photo.url" alt="Foto BR Event" class="photo-img" loading="lazy" />
-        <div class="photo-overlay">
-          <div class="photo-meta">
-            <span class="uploader-name"><User class="inline-icon" /> {{ photo.uploader }}</span>
-            <span class="photo-date">{{ photo.date }}</span>
+      <template v-for="(photo, index) in store.photos" :key="photo.id">
+        <div 
+          class="photo-card glass-card"
+          @click="openLightbox(photo)"
+        >
+          <img :src="photo.url" alt="Foto BR Event" class="photo-img" loading="lazy" />
+          <div class="photo-overlay">
+            <div class="photo-meta">
+              <span class="uploader-name"><User class="inline-icon" /> {{ photo.uploader }}</span>
+              <span class="photo-date">{{ photo.date }}</span>
+            </div>
+            <button class="download-btn-sm" @click.stop="downloadPhoto(photo)">
+              <Download class="icon-sm" /> Descargar
+            </button>
           </div>
-          <button class="download-btn-sm" @click.stop="downloadPhoto(photo)">
-            <Download class="icon-sm" /> Descargar
-          </button>
         </div>
+
+        <!-- Ad Banner inserted every 4 photos -->
+        <div v-if="(index + 1) % 4 === 0" :key="`ad-${index}`" class="photo-grid-ad-full">
+          <AdBanner location="galeria" @open-request-modal="showAdRequestModal = true" />
+        </div>
+      </template>
+
+      <!-- Ad Banner when fewer than 4 photos exist -->
+      <div v-if="store.photos.length < 4" class="photo-grid-ad-full">
+        <AdBanner location="galeria" @open-request-modal="showAdRequestModal = true" />
       </div>
 
       <div v-if="store.photos.length === 0" class="empty-gallery">
@@ -113,6 +123,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Ad Request Modal -->
+    <AdRequestModal 
+      v-if="showAdRequestModal" 
+      @close="showAdRequestModal = false" 
+    />
   </div>
 </template>
 
@@ -121,8 +137,11 @@ import { ref } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
 import { UploadCloud, Download, Image, User } from 'lucide-vue-next'
+import AdBanner from './AdBanner.vue'
+import AdRequestModal from './AdRequestModal.vue'
 
 const showUploadModal = ref(false)
+const showAdRequestModal = ref(false)
 const selectedPhoto = ref(null)
 const fileInputRef = ref(null)
 const isUploading = ref(false)
@@ -259,6 +278,11 @@ const downloadPhoto = (photo) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 18px;
+}
+
+.photo-grid-ad-full {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .photo-card {

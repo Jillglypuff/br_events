@@ -1,6 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { reactive } from 'vue'
 import { toast } from './toast'
+import {
+  sendWelcomeEmail,
+  sendOrganizerAssignedEmail,
+  sendEventDateConfirmedEmail,
+  sendLocationUpdatedEmail,
+  sendExpenseAddedEmail,
+  sendSponsorshipReceivedEmail,
+  sendAdRequestReceivedEmail,
+  sendAdminAlertNewSponsorship,
+  sendAdminAlertNewAd
+} from './resend.js'
 
 let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
@@ -49,10 +60,32 @@ const INITIAL_CURRENT_EVENT = {
   attendance: []
 }
 
+const INITIAL_SPONSORSHIPS = []
+
+const INITIAL_ADS = [
+  {
+    id: 'ad-1',
+    businessName: 'Boutique Tropical Fashion',
+    description: 'Ropa deportiva y prendas exclusivas para chicas activas. ¡Obtén 20% de descuento en tu primera compra con el código BREVENTS20!',
+    websiteUrl: 'https://instagram.com',
+    bannerUrl: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=1200&h=400&fit=crop',
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+    active: true,
+    location: 'all',
+    status: 'approved'
+  }
+]
+
 const loadState = (key, fallback) => {
   try {
     const saved = localStorage.getItem(`br_events_${key}`)
-    return saved ? JSON.parse(saved) : fallback
+    if (!saved) return fallback
+    const parsed = JSON.parse(saved)
+    if (key === 'sponsorships' && Array.isArray(parsed)) {
+      return parsed.filter(item => item.id !== 'sp-1' && item.id !== 'sp-2' && item.id !== 'sp-3')
+    }
+    return parsed
   } catch (e) {
     return fallback
   }
@@ -76,6 +109,8 @@ export const store = reactive({
   expenses: loadState('expenses', []),
   photos: loadState('photos', []),
   reviews: loadState('reviews', []),
+  sponsorships: loadState('sponsorships', INITIAL_SPONSORSHIPS),
+  ads: loadState('ads', INITIAL_ADS),
   notifications: loadState('notifications', []),
   currentUser: loadState('currentUser', null),
 
@@ -179,6 +214,23 @@ export const store = reactive({
           date: new Date(r.created_at).toLocaleDateString('es-CR')
         }))
       }
+
+      // 6. Fetch Sponsorships
+      const { data: spData, error: spErr } = await supabase.from('sponsorships').select('*').order('created_at', { ascending: false })
+      if (!spErr && spData && spData.length > 0) {
+        this.sponsorships = spData.map(s => ({
+          id: s.id,
+          sponsorName: s.sponsor_name,
+          contactName: s.contact_name,
+          contactPhone: s.contact_phone,
+          monthName: s.month_name,
+          type: s.type || 'Regalías y Productos',
+          productDescription: s.product_description || '',
+          amount: Number(s.amount) || 0,
+          status: s.status,
+          notes: s.notes
+        }))
+      }
     } catch (err) {
       console.warn('Supabase sync info:', err)
     }
@@ -203,6 +255,11 @@ export const store = reactive({
         this.currentEvent.organizerId = month.organizerId
         this.currentEvent.title = theme
         saveState('currentEvent', this.currentEvent)
+      }
+
+      // Resend Email Trigger
+      if (friend && friend.email) {
+        sendOrganizerAssignedEmail(month.name, friend)
       }
 
       if (supabase) {
@@ -252,13 +309,203 @@ export const store = reactive({
     this.expenses = []
     this.photos = []
     this.reviews = []
+    this.sponsorships = [...INITIAL_SPONSORSHIPS]
     this.currentUser = null
     saveState('friends', this.friends)
     saveState('months', this.months)
     saveState('expenses', this.expenses)
     saveState('photos', this.photos)
     saveState('reviews', this.reviews)
+    saveState('sponsorships', this.sponsorships)
     saveState('currentUser', null)
+  },
+
+  async addSponsorship(data) {
+    const newSp = {
+      id: `sp-${Date.now()}`,
+      sponsorName: data.sponsorName,
+      contactName: data.contactName || '',
+      contactPhone: data.contactPhone || '',
+      monthName: data.monthName || 'General',
+      type: data.type || 'Regalías y Productos',
+      productDescription: data.type === 'Regalías y Productos' ? (data.productDescription || '') : '',
+      amount: data.type === 'Monto' ? (Number(data.amount) || 0) : 0,
+      status: data.status || 'Confirmado',
+      notes: data.notes || ''
+    }
+
+    if (supabase) {
+      try {
+        await supabase.from('sponsorships').insert({
+          sponsor_name: newSp.sponsorName,
+          contact_name: newSp.contactName,
+          contact_phone: newSp.contactPhone,
+          month_name: newSp.monthName,
+          type: newSp.type,
+          product_description: newSp.productDescription,
+          amount: newSp.amount,
+          status: newSp.status,
+          notes: newSp.notes
+        })
+      } catch (e) {
+        console.warn('Supabase insert sponsorship:', e)
+      }
+    }
+
+    this.sponsorships.unshift(newSp)
+    saveState('sponsorships', this.sponsorships)
+    toast.success('¡Patrocinio registrado con éxito!')
+
+    // Resend Email Triggers
+    sendSponsorshipReceivedEmail(newSp)
+    sendAdminAlertNewSponsorship(newSp)
+  },
+
+  async updateSponsorship(id, data) {
+    const sp = this.sponsorships.find(s => s.id === id)
+    if (sp) {
+      Object.assign(sp, {
+        sponsorName: data.sponsorName,
+        contactName: data.contactName,
+        contactPhone: data.contactPhone,
+        monthName: data.monthName,
+        type: data.type || 'Regalías y Productos',
+        productDescription: data.type === 'Regalías y Productos' ? (data.productDescription || '') : '',
+        amount: data.type === 'Monto' ? (Number(data.amount) || 0) : 0,
+        status: data.status,
+        notes: data.notes
+      })
+
+      if (supabase) {
+        try {
+          await supabase.from('sponsorships').update({
+            sponsor_name: sp.sponsorName,
+            contact_name: sp.contactName,
+            contact_phone: sp.contactPhone,
+            month_name: sp.monthName,
+            type: sp.type,
+            product_description: sp.productDescription,
+            amount: sp.amount,
+            status: sp.status,
+            notes: sp.notes
+          }).eq('id', id)
+        } catch (e) {
+          console.warn('Supabase update sponsorship:', e)
+        }
+      }
+
+      saveState('sponsorships', this.sponsorships)
+      toast.success('¡Patrocinio actualizado!')
+    }
+  },
+
+  async deleteSponsorship(id) {
+    if (supabase) {
+      try {
+        await supabase.from('sponsorships').delete().eq('id', id)
+      } catch (e) {
+        console.warn('Supabase delete sponsorship:', e)
+      }
+    }
+    const idx = this.sponsorships.findIndex(s => s.id === id)
+    if (idx !== -1) {
+      this.sponsorships.splice(idx, 1)
+      saveState('sponsorships', this.sponsorships)
+      toast.info('Patrocinio eliminado.')
+    }
+  },
+
+  async addAdCampaign(data) {
+    const newAd = {
+      id: `ad-${Date.now()}`,
+      businessName: data.businessName,
+      description: data.description,
+      websiteUrl: data.websiteUrl || 'https://instagram.com',
+      bannerUrl: data.bannerUrl || 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=1200&h=400&fit=crop',
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      endDate: data.endDate || '2026-12-31',
+      active: true,
+      location: data.location || 'all',
+      status: data.status || 'approved'
+    }
+
+    if (supabase) {
+      try {
+        await supabase.from('ad_campaigns').insert({
+          business_name: newAd.businessName,
+          description: newAd.description,
+          website_url: newAd.websiteUrl,
+          banner_url: newAd.bannerUrl,
+          start_date: newAd.startDate,
+          end_date: newAd.endDate,
+          active: newAd.active,
+          location: newAd.location,
+          status: newAd.status
+        })
+      } catch (e) {
+        console.warn('Supabase insert ad campaign:', e)
+      }
+    }
+
+    this.ads.unshift(newAd)
+    saveState('ads', this.ads)
+    toast.success('¡Solicitud de campaña publicitaria registrada con éxito!')
+
+    // Resend Email Triggers
+    sendAdRequestReceivedEmail(newAd)
+    sendAdminAlertNewAd(newAd)
+    return newAd
+  },
+
+  async updateAdCampaign(id, data) {
+    const ad = this.ads.find(a => a.id === id)
+    if (ad) {
+      Object.assign(ad, data)
+      if (supabase) {
+        try {
+          await supabase.from('ad_campaigns').update({
+            business_name: ad.businessName,
+            description: ad.description,
+            website_url: ad.websiteUrl,
+            banner_url: ad.bannerUrl,
+            start_date: ad.startDate,
+            end_date: ad.endDate,
+            active: ad.active,
+            location: ad.location,
+            status: ad.status
+          }).eq('id', id)
+        } catch (e) {
+          console.warn('Supabase update ad campaign:', e)
+        }
+      }
+      saveState('ads', this.ads)
+      toast.success('¡Campaña publicitaria actualizada!')
+    }
+  },
+
+  async toggleAdActive(id) {
+    const ad = this.ads.find(a => a.id === id)
+    if (ad) {
+      ad.active = !ad.active
+      saveState('ads', this.ads)
+      toast.info(`Campaña ${ad.active ? 'activada' : 'desactivada'}.`)
+    }
+  },
+
+  async deleteAdCampaign(id) {
+    if (supabase) {
+      try {
+        await supabase.from('ad_campaigns').delete().eq('id', id)
+      } catch (e) {
+        console.warn('Supabase delete ad campaign:', e)
+      }
+    }
+    const idx = this.ads.findIndex(a => a.id === id)
+    if (idx !== -1) {
+      this.ads.splice(idx, 1)
+      saveState('ads', this.ads)
+      toast.info('Campaña publicitaria eliminada.')
+    }
   },
 
   getInitials(name) {
@@ -370,6 +617,9 @@ export const store = reactive({
     this.currentUser = newFriend
     saveState('friends', this.friends)
     saveState('currentUser', this.currentUser)
+
+    // Resend Email Trigger
+    sendWelcomeEmail(newFriend)
     return newFriend
   },
 
@@ -444,7 +694,7 @@ export const store = reactive({
       this.currentEvent.attendance = []
       const reConfirmNotif = {
         id: `notif-${Date.now()}`,
-        title: '⚠️ ¡Se actualizó la Ubicación del Evento!',
+        title: '¡Se actualizó la Ubicación del Evento!',
         message: `La organizadora actualizó la ubicación a "${this.currentEvent.location}". Por favor vuelve a confirmar tu asistencia.`,
         dateText: this.currentEvent.confirmedDate || 'Por definir',
         createdAt: new Date().toLocaleString('es-CR'),
@@ -458,6 +708,13 @@ export const store = reactive({
     }
 
     saveState('currentEvent', this.currentEvent)
+
+    // Resend Email Triggers for all friends
+    if (Array.isArray(this.friends)) {
+      this.friends.forEach(f => {
+        if (f.email) sendLocationUpdatedEmail(this.currentEvent, f.email, f.name)
+      })
+    }
   },
 
   async updateUserProfile(updatedData) {
@@ -641,7 +898,7 @@ export const store = reactive({
       this.currentEvent.attendance = []
       const reConfirmNotif = {
         id: `notif-${Date.now()}`,
-        title: '⚠️ ¡Se actualizó la Fecha/Hora del Evento!',
+        title: '¡Se actualizó la Fecha/Hora del Evento!',
         message: `${this.currentEvent.organizer || 'La organizadora'} cambió la fecha/hora del evento a "${dateText} (${this.currentEvent.confirmedTime})". Por favor vuelve a confirmar tu asistencia.`,
         dateText: dateText,
         createdAt: new Date().toLocaleString('es-CR'),
@@ -652,7 +909,7 @@ export const store = reactive({
     } else {
       const newNotif = {
         id: `notif-${Date.now()}`,
-        title: '🗓️ ¡Fecha de Evento Confirmada!',
+        title: '¡Fecha de Evento Confirmada!',
         message: `${this.currentEvent.organizer || 'La organizadora'} ha fijado la fecha oficial: "${dateText} de ${this.currentEvent.confirmedTime}". ¡Confirma tu asistencia!`,
         dateText: dateText,
         createdAt: new Date().toLocaleString('es-CR'),
@@ -664,6 +921,13 @@ export const store = reactive({
 
     saveState('notifications', this.notifications)
     saveState('currentEvent', this.currentEvent)
+
+    // Resend Email Triggers for all friends
+    if (Array.isArray(this.friends)) {
+      this.friends.forEach(f => {
+        if (f.email) sendEventDateConfirmedEmail(this.currentEvent, f.email, f.name)
+      })
+    }
   },
 
   respondAttendance(status) {
@@ -736,6 +1000,13 @@ export const store = reactive({
     this.expenses.unshift(newExp)
     saveState('expenses', this.expenses)
     toast.success('¡Gasto registrado en estado Pendiente de comprobante!')
+
+    // Resend Email Triggers for all friends
+    if (Array.isArray(this.friends)) {
+      this.friends.forEach(f => {
+        if (f.email) sendExpenseAddedEmail(newExp, f.email, f.name)
+      })
+    }
   },
 
   confirmExpensePayment(expId, receiptUrl = '') {

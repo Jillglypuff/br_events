@@ -48,6 +48,12 @@
       </div>
     </div>
 
+    <!-- Publicidad Banner Before RSVP Confirmation Card -->
+    <AdBanner 
+      location="evento" 
+      @open-request-modal="showAdRequestModal = true" 
+    />
+
     <!-- Attendance Confirmation RSVP Module (ONLY SHOWN WHEN CONFIRMED DATE EXISTS) -->
     <div v-if="event.confirmedDate" class="module-card glass-card rsvp-module animate-fade-in">
       <div class="module-header space-between">
@@ -606,6 +612,12 @@
         </form>
       </div>
     </div>
+
+    <!-- Ad Request Modal -->
+    <AdRequestModal 
+      v-if="showAdRequestModal" 
+      @close="showAdRequestModal = false" 
+    />
   </div>
 </template>
 
@@ -614,12 +626,16 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
 import EventReviews from './EventReviews.vue'
+import AdBanner from './AdBanner.vue'
+import AdRequestModal from './AdRequestModal.vue'
 import confetti from 'canvas-confetti'
 import { 
   Vote, MapPin, Navigation, Compass, CalendarPlus, CalendarCheck, CheckSquare, 
   Car, Sparkles, User, UserCheck, Lock, Plus, Trash2, CheckCircle2, Clock, Edit3,
   Eye, EyeOff, HelpCircle, XCircle 
 } from 'lucide-vue-next'
+
+const showAdRequestModal = ref(false)
 
 onMounted(() => {
   store.ensurePollsInit()
