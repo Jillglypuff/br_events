@@ -96,6 +96,23 @@
           ></textarea>
         </div>
 
+        <!-- Términos y Condiciones de Patrocinio -->
+        <div class="terms-card">
+          <div class="terms-header">
+            <ShieldCheck class="terms-icon" />
+            <span class="terms-title">Términos y Condiciones de Patrocinio</span>
+          </div>
+          <ul class="terms-list">
+            <li><strong>Derecho de Reserva:</strong> Nos reservamos el derecho de evaluar, aceptar o declinar cualquier oferta de patrocinio.</li>
+            <li><strong>Identidad Comunitaria:</strong> La marca, regalía o producto ofrecido debe estar alineado con la identidad, principios y valores de BR Events.</li>
+            <li><strong>Evaluación Previa:</strong> Toda propuesta será revisada por el equipo administrativo antes de confirmar la alianza.</li>
+          </ul>
+          <label class="terms-checkbox-label">
+            <input type="checkbox" v-model="acceptTerms" required class="terms-checkbox" />
+            <span>Acepto los Términos y Condiciones de Patrocinio</span>
+          </label>
+        </div>
+
         <div class="modal-actions">
           <button type="button" @click="$emit('close')" class="btn-secondary">Cancelar</button>
           <button type="submit" class="btn-primary">
@@ -109,12 +126,14 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
-import { Handshake, Send } from 'lucide-vue-next'
+import { Handshake, Send, ShieldCheck } from 'lucide-vue-next'
 
 const emit = defineEmits(['close', 'submitted'])
+
+const acceptTerms = ref(false)
 
 const form = reactive({
   sponsorName: '',
@@ -131,6 +150,11 @@ const form = reactive({
 const submitSponsorshipRequest = async () => {
   if (!form.sponsorName.trim() || !form.contactName.trim()) {
     toast.warning('Por favor completa el nombre de la empresa y del contacto.')
+    return
+  }
+
+  if (!acceptTerms.value) {
+    toast.warning('Debes aceptar los Términos y Condiciones de Patrocinio.')
     return
   }
 

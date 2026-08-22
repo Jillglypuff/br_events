@@ -76,6 +76,23 @@
           <input v-model="registerForm.password" type="password" placeholder="••••••••" required class="form-input" />
         </div>
 
+        <!-- Términos y Condiciones de Uso de la Plataforma -->
+        <div class="terms-card">
+          <div class="terms-header">
+            <ShieldCheck class="terms-icon" />
+            <span class="terms-title">Términos y Condiciones de Uso</span>
+          </div>
+          <ul class="terms-list">
+            <li><strong>Convivencia y Respeto:</strong> Promover un trato sano, positivo y respetuoso en la plataforma y eventos de la comunidad.</li>
+            <li><strong>Derecho de Admisión y Uso:</strong> Nos reservamos el derecho de admisión, uso y permanencia para resguardar la seguridad y valores de la comunidad.</li>
+            <li><strong>Privacidad de Datos:</strong> Tus datos personales son confidenciales y utilizados únicamente para fines logísticos de la comunidad.</li>
+          </ul>
+          <label class="terms-checkbox-label">
+            <input type="checkbox" v-model="acceptRegisterTerms" required class="terms-checkbox" />
+            <span>Acepto los Términos y Condiciones de Uso</span>
+          </label>
+        </div>
+
         <button type="submit" class="btn-emerald btn-full">
           <UserPlus class="btn-icon" />
           <span>Crear mi Cuenta de Amiga</span>
@@ -89,11 +106,12 @@
 import { ref, reactive } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
-import { LogIn, UserPlus } from 'lucide-vue-next'
+import { LogIn, UserPlus, ShieldCheck } from 'lucide-vue-next'
 
 const emit = defineEmits(['close', 'auth-success'])
 
 const authMode = ref('login')
+const acceptRegisterTerms = ref(false)
 
 const loginForm = reactive({
   email: '',
@@ -108,10 +126,9 @@ const registerForm = reactive({
   password: ''
 })
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (loginForm.email) {
-    store.login(loginForm.email, loginForm.password)
-    toast.success(`¡Bienvenida a BR Events, ${store.currentUser.name}!`)
+    await store.login(loginForm.email, loginForm.password)
     emit('auth-success')
     emit('close')
   }
@@ -119,6 +136,10 @@ const handleLogin = () => {
 
 const handleRegister = async () => {
   if (registerForm.name && registerForm.email) {
+    if (!acceptRegisterTerms.value) {
+      toast.warning('Debes aceptar los Términos y Condiciones de Uso para registrarte.')
+      return
+    }
     await store.register(registerForm)
     toast.success(`¡Cuenta creada con éxito! Bienvenida a BR Events, ${registerForm.name}.`)
     emit('auth-success')

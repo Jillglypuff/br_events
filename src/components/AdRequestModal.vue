@@ -102,6 +102,23 @@
           </div>
         </div>
 
+        <!-- Términos y Condiciones de Publicidad -->
+        <div class="terms-card">
+          <div class="terms-header">
+            <ShieldCheck class="terms-icon" />
+            <span class="terms-title">Términos y Condiciones de Publicidad</span>
+          </div>
+          <ul class="terms-list">
+            <li><strong>Derecho de Reserva:</strong> Nos reservamos el derecho exclusivo de aceptar, rechazar o dar de baja cualquier solicitud de publicidad.</li>
+            <li><strong>Identidad Comunitaria:</strong> El contenido, producto o servicio anunciado debe estar alineado con la identidad, principios y valores de la comunidad BR Events.</li>
+            <li><strong>Aprobación Previa:</strong> Toda solicitud requiere revisión y aprobación del equipo administrativo antes de ser publicada.</li>
+          </ul>
+          <label class="terms-checkbox-label">
+            <input type="checkbox" v-model="acceptTerms" required class="terms-checkbox" />
+            <span>Acepto los Términos y Condiciones de Publicidad</span>
+          </label>
+        </div>
+
         <div class="modal-actions">
           <button type="button" @click="$emit('close')" class="btn-secondary">Cancelar</button>
           <button type="submit" class="btn-primary">
@@ -118,7 +135,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
-import { Megaphone, UploadCloud, Send } from 'lucide-vue-next'
+import { Megaphone, UploadCloud, Send, ShieldCheck } from 'lucide-vue-next'
 
 const props = defineProps({
   isAdmin: {
@@ -134,6 +151,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submitted'])
 
 const fileInputRef = ref(null)
+const acceptTerms = ref(false)
 
 const adForm = reactive({
   businessName: '',
@@ -185,6 +203,11 @@ const handleFileUpload = async (event) => {
 const submitAdRequest = async () => {
   if (!adForm.businessName.trim() || !adForm.description.trim()) {
     toast.warning('Por favor completa el nombre del negocio y la descripción.')
+    return
+  }
+
+  if (!acceptTerms.value && !props.isAdmin) {
+    toast.warning('Debes aceptar los Términos y Condiciones de Publicidad.')
     return
   }
 
