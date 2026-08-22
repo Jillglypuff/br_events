@@ -50,6 +50,12 @@
       </div>
     </div>
 
+    <!-- Ad Banner at the top of available months -->
+    <AdBanner 
+      location="turnero" 
+      @open-request-modal="showAdRequestModal = true" 
+    />
+
     <!-- Months Grid (Hides past months of current year) -->
     <div class="months-grid">
       <div 
@@ -107,17 +113,13 @@
             </button>
 
             <button 
-              v-else-if="month.status === 'active'"
+              v-else
               class="btn-emerald btn-full"
-              @click="$emit('view-active-event')"
+              @click="selectMonthEvent(month)"
             >
               <Sparkles class="btn-icon" />
-              <span>Ver Evento Activo</span>
+              <span>Ver Evento (Organiza {{ month.organizerName }})</span>
             </button>
-
-            <span v-else class="assigned-tag">
-              <Check class="btn-icon" /> Asignado a {{ month.organizerName }}
-            </span>
           </div>
         </div>
       </div>
@@ -128,7 +130,9 @@
       <div class="modal-card glass-card animate-fade-in">
         <div class="modal-header">
           <h3>Postularme para organizar {{ selectedMonthForPostulate.name }} {{ selectedYear }}</h3>
-          <button @click="selectedMonthForPostulate = null" class="btn-close">✕</button>
+          <button @click="selectedMonthForPostulate = null" class="btn-close" aria-label="Cerrar">
+            <X class="btn-icon-sm" />
+          </button>
         </div>
 
         <form @submit.prevent="submitPostulation" class="postulate-form">
@@ -144,36 +148,74 @@
           </div>
 
           <div class="form-group">
-            <label>URL Imagen Temática (Opcional)</label>
-            <input 
-              v-model="postulateForm.image" 
-              type="url" 
-              placeholder="https://..." 
-              class="form-input"
-            />
+            <label>Imagen Temática (Opcional)</label>
+            <div class="image-upload-wrapper">
+              <input 
+                type="file" 
+                ref="fileInputRef" 
+                accept="image/*" 
+                @change="handleFileUpload" 
+                style="display: none;" 
+              />
+              <div v-if="!postulateForm.image" class="upload-trigger" @click="triggerFileInput">
+                <Upload class="upload-icon" />
+                <span>{{ isUploading ? 'Subiendo imagen...' : 'Subir imagen desde tu dispositivo' }}</span>
+              </div>
+              <div v-else class="image-preview-container">
+                <img :src="postulateForm.image" alt="Vista previa de temática" class="image-preview" />
+                <button type="button" @click="removeImage" class="btn-remove-image" title="Eliminar imagen">
+                  <Trash2 class="btn-icon-sm" /> Quitar imagen
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="modal-actions">
             <button type="button" @click="selectedMonthForPostulate = null" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary">Confirmar Postulación</button>
+            <button type="submit" class="btn-primary" :disabled="isUploading">
+              {{ isUploading ? 'Subiendo...' : 'Confirmar Postulación' }}
+            </button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- Ad Request Modal -->
+    <AdRequestModal 
+      v-if="showAdRequestModal" 
+      @close="showAdRequestModal = false" 
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { store } from '../lib/supabase.js'
+import { toast } from '../lib/toast.js'
 import confetti from 'canvas-confetti'
-import { CalendarCheck, HeartHandshake, Sparkles, User, Check, CheckCircle2, Clock } from 'lucide-vue-next'
+import { CalendarCheck, HeartHandshake, Sparkles, User, Check, CheckCircle2, Clock, Upload, Trash2, X } from 'lucide-vue-next'
+import AdBanner from './AdBanner.vue'
+import AdRequestModal from './AdRequestModal.vue'
 
-defineEmits(['view-active-event'])
+const emit = defineEmits(['view-active-event'])
+
+const showAdRequestModal = ref(false)
+
+const selectMonthEvent = (month) => {
+  store.currentEvent.organizer = month.organizerName || 'Sin Asignar'
+  store.currentEvent.organizerId = month.organizerId || null
+  store.currentEvent.title = month.theme ? month.theme : `Evento de ${month.name}`
+  if (month.image) store.currentEvent.banner = month.image
+  store.currentEvent.monthId = month.id
+  store.currentEvent.status = month.status || 'upcoming'
+  emit('view-active-event')
+}
 
 const selectedYear = ref(2026)
 const currentFilter = ref('all')
 const selectedMonthForPostulate = ref(null)
+const fileInputRef = ref(null)
+const isUploading = ref(false)
 
 const postulateForm = reactive({
   theme: '',
@@ -249,6 +291,46 @@ const openPostulateModal = (month) => {
   selectedMonthForPostulate.value = month
   postulateForm.theme = ''
   postulateForm.image = ''
+  isUploading.value = false
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileUpload = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  isUploading.value = true
+  try {
+    const uploadedUrl = await store.uploadImage(file)
+    if (uploadedUrl) {
+      postulateForm.image = uploadedUrl
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        postulateForm.image = e.target.result
+        isUploading.value = false
+      }
+      reader.readAsDataURL(file)
+      return
+    }
+  } catch (err) {
+    console.error('Error al subir imagen:', err)
+  } finally {
+    isUploading.value = false
+  }
+}
+
+const removeImage = () => {
+  postulateForm.image = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
 }
 
 const submitPostulation = () => {
@@ -264,7 +346,7 @@ const submitPostulation = () => {
       origin: { y: 0.6 },
       colors: ['#D81E5B', '#2A9D8F', '#FF69B4']
     })
-    alert(`¡Te has registrado como organizadora de ${selectedMonthForPostulate.value.name} ${selectedYear.value}!`)
+    toast.success(`¡Te has registrado como organizadora de ${selectedMonthForPostulate.value.name} ${selectedYear.value}!`)
     selectedMonthForPostulate.value = null
   }
 }
@@ -569,5 +651,70 @@ const submitPostulation = () => {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 10px;
+}
+
+.image-upload-wrapper {
+  margin-top: 4px;
+}
+
+.upload-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  background: var(--color-bg-input);
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.upload-trigger:hover {
+  border-color: var(--color-berry);
+  color: var(--color-text-main);
+  background: rgba(216, 30, 91, 0.05);
+}
+
+.upload-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-berry);
+}
+
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.image-preview {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+}
+
+.btn-remove-image {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-remove-image:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
 }
 </style>

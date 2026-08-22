@@ -6,6 +6,8 @@
       <LandingPage 
         v-if="showLanding"
         @open-auth="showAuthModal = true"
+        @open-profile="showProfileModal = true"
+        @enter-dashboard="showLanding = false"
       />
 
       <!-- App Dashboard Views (Visible after login / registration) -->
@@ -39,6 +41,10 @@
         <Recap 
           v-else-if="activeTab === 'recap'"
         />
+
+        <AdminPanel 
+          v-else-if="activeTab === 'admin'"
+        />
       </template>
     </main>
 
@@ -62,6 +68,9 @@
       @close="showAuthModal = false"
       @auth-success="handleAuthSuccess"
     />
+
+    <!-- Global Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 
@@ -74,8 +83,10 @@ import EventCard from './components/EventCard.vue'
 import Gastos from './components/Gastos.vue'
 import Galeria from './components/Galeria.vue'
 import Recap from './components/Recap.vue'
+import AdminPanel from './components/AdminPanel.vue'
 import ProfileModal from './components/ProfileModal.vue'
 import AuthModal from './components/AuthModal.vue'
+import ToastContainer from './components/ToastContainer.vue'
 
 // Landing Page is the DEFAULT initial view when opening the application
 const showLanding = ref(true)

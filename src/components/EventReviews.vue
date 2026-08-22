@@ -1,8 +1,16 @@
 <template>
-  <div class="reviews-module glass-card">
-    <div class="module-header">
-      <Star class="module-icon text-gold" />
-      <h3>Reseñas & Retroalimentación del Evento</h3>
+  <!-- Card de reseña SOLAMENTE se renderiza el día del evento al finalizar (status === 'completed') -->
+  <div v-if="isEventCompleted" class="reviews-module glass-card animate-fade-in">
+    <div class="module-header space-between">
+      <div class="flex-align">
+        <Star class="module-icon text-gold" />
+        <h3>Reseñas & Opiniones Anónimas</h3>
+      </div>
+
+      <button @click="showAddModal = true" class="btn-emerald btn-sm">
+        <MessageSquarePlus class="btn-icon" />
+        <span>Escribir Reseña Anónima</span>
+      </button>
     </div>
 
     <!-- Rating Summary Bar -->
@@ -18,21 +26,18 @@
         </div>
         <span class="reviews-count">({{ reviewsList.length }} reseñas)</span>
       </div>
-
-      <button @click="showAddModal = true" class="btn-primary btn-sm">
-        <MessageSquarePlus class="btn-icon" />
-        <span>Escribir Reseña</span>
-      </button>
     </div>
 
-    <!-- Reviews List -->
+    <!-- Reviews List (Anonymous Display) -->
     <div class="reviews-list">
       <div v-for="rev in reviewsList" :key="rev.id" class="review-item">
         <div class="review-header">
           <div class="author-info">
-            <img :src="rev.avatar" alt="Avatar" class="author-avatar" />
+            <div class="anonymous-avatar">
+              <User class="icon-user-sm" />
+            </div>
             <div>
-              <strong class="author-name">{{ rev.friendName }}</strong>
+              <strong class="author-name">Amiga Anónima</strong>
               <small class="review-date">{{ rev.date }}</small>
             </div>
           </div>
@@ -48,17 +53,25 @@
 
         <p class="review-comment">"{{ rev.comment }}"</p>
       </div>
+
+      <div v-if="reviewsList.length === 0" class="empty-reviews">
+        <p>No hay reseñas publicadas para este evento todavía.</p>
+      </div>
     </div>
 
-    <!-- Add Review Modal -->
+    <!-- Add Anonymous Review Modal -->
     <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
       <div class="modal-card glass-card animate-fade-in">
         <div class="modal-header">
-          <h3>Escribir Reseña del Evento</h3>
+          <h3>Escribir Reseña Anónima del Evento</h3>
           <button @click="showAddModal = false" class="btn-close">✕</button>
         </div>
 
         <form @submit.prevent="submitReview" class="modal-form">
+          <p class="anon-disclaimer">
+            <Lock class="icon-xs inline-icon" /> <strong>Reseña Anónima:</strong> Tu nombre e identidad no se mostrarán al publicar.
+          </p>
+
           <div class="form-group">
             <label>Puntuación (1 a 5 Estrellas)</label>
             <div class="star-picker">
@@ -72,11 +85,11 @@
           </div>
 
           <div class="form-group">
-            <label>Tu Comentario / Retroalimentación</label>
+            <label>Tu Opinión Anónima</label>
             <textarea 
               v-model="newReview.comment" 
               rows="3"
-              placeholder="¿Qué te pareció la música, comida, lugar y organización?" 
+              placeholder="¿Qué te pareció la música, comida, temática y atención del evento?" 
               required
               class="form-textarea"
             ></textarea>
@@ -84,7 +97,7 @@
 
           <div class="modal-actions">
             <button type="button" @click="showAddModal = false" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-emerald">Publicar Reseña</button>
+            <button type="submit" class="btn-emerald">Publicar Reseña Anónima</button>
           </div>
         </form>
       </div>
@@ -95,13 +108,17 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { store } from '../lib/supabase.js'
-import { Star, MessageSquarePlus } from 'lucide-vue-next'
+import { Star, MessageSquarePlus, Lock, User } from 'lucide-vue-next'
 
 const showAddModal = ref(false)
 
 const newReview = ref({
   rating: 5,
   comment: ''
+})
+
+const isEventCompleted = computed(() => {
+  return store.currentEvent?.status === 'completed'
 })
 
 const reviewsList = computed(() => store.reviews)
@@ -136,6 +153,16 @@ const submitReview = () => {
   color: var(--color-berry);
 }
 
+.module-header.space-between {
+  justify-content: space-between;
+}
+
+.flex-align {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .text-gold {
   color: #F4A261;
 }
@@ -149,6 +176,7 @@ const submitReview = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .score-display {
@@ -218,15 +246,25 @@ const submitReview = () => {
   gap: 10px;
 }
 
-.author-avatar {
+.anonymous-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-user-sm {
+  width: 16px;
+  height: 16px;
 }
 
 .author-name {
   font-size: 0.9rem;
+  color: var(--color-text-main);
 }
 
 .review-date {
@@ -239,6 +277,30 @@ const submitReview = () => {
   font-size: 0.9rem;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+.empty-reviews {
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+  font-style: italic;
+  padding: 10px;
+}
+
+.anon-disclaimer {
+  background: rgba(42, 157, 143, 0.1);
+  border: 1px solid rgba(42, 157, 143, 0.3);
+  color: #3BCEAC;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inline-icon {
+  width: 14px;
+  height: 14px;
 }
 
 /* Modal */

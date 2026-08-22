@@ -10,6 +10,28 @@
           <span class="brand-logo-br">BR</span>
           <span class="brand-logo-events">Events</span>
         </div>
+        
+        <div class="hero-card-actions">
+          <ThemeSwitcher />
+
+          <template v-if="store.currentUser">
+            <button @click="$emit('open-profile')" class="header-profile-btn" title="Mi Perfil">
+              <img v-if="store.currentUser.avatar" :src="store.currentUser.avatar" alt="Avatar" class="header-avatar-img" />
+              <div v-else class="header-initials-badge">
+                {{ store.getInitials(store.currentUser.name) }}
+              </div>
+            </button>
+            <button @click="$emit('enter-dashboard')" class="btn-ghost-sm" title="Ir al Tablero">
+              <span>Ir a la App</span>
+            </button>
+          </template>
+
+          <template v-else>
+            <button @click="$emit('open-auth')" class="btn-ghost-sm" title="Iniciar Sesión / Acceso">
+              <span>Acceso</span>
+            </button>
+          </template>
+        </div>
       </div>
 
       <!-- Hero Main Content -->
@@ -26,7 +48,12 @@
           "No se trata de ser las más rápidas, ni de ser expertas en nada. Se trata de estar, de escucharnos y de movernos juntas."
         </blockquote>
 
-        <button @click="$emit('open-auth')" class="btn-primary btn-hero">
+        <button v-if="store.currentUser" @click="$emit('enter-dashboard')" class="btn-primary btn-hero">
+          <span>IR A LA APP</span>
+          <ArrowRight class="btn-icon" />
+        </button>
+
+        <button v-else @click="$emit('open-auth')" class="btn-primary btn-hero">
           <span>INICIAR</span>
           <ArrowRight class="btn-icon" />
         </button>
@@ -73,6 +100,50 @@
       </div>
     </section>
 
+    <!-- Seccion de Alianzas: Patrocinadores & Publicidad -->
+    <section class="landing-section alliances-section">
+      <div class="section-header">
+        <h2 class="section-title">¿Quieres Unirte como Aliado a BR Events?</h2>
+        <p class="section-subtitle">
+          Ofrece tus productos/servicios a nuestra comunidad o destaca tu marca con un banner publicitario de 1200x400 px.
+        </p>
+      </div>
+
+      <div class="alliances-grid">
+        <!-- Card Patrocinadores -->
+        <div class="alliance-card glass-card">
+          <div class="alliance-icon-box">
+            <Handshake class="alliance-icon color-berry" />
+          </div>
+          <h3>Sé Patrocinador Oficial</h3>
+          <p>Aporta regalías, productos o patrocinio económico para nuestros eventos mensuales y conecta directamente con nuestras integrantes.</p>
+          <button @click="showSponsorshipModal = true" class="btn-primary btn-sm alliance-btn">
+            <span>Quiero ser Patrocinador</span>
+            <ArrowRight class="btn-icon" />
+          </button>
+        </div>
+
+        <!-- Card Publicidad -->
+        <div class="alliance-card glass-card">
+          <div class="alliance-icon-box">
+            <Megaphone class="alliance-icon color-emerald" />
+          </div>
+          <h3>Anúnciate con Nosotras</h3>
+          <p>Publica tu banner publicitario (1200x400 px) en la plataforma (Landing, Turnero, Eventos y Galería) con enlace directo a tu web o redes.</p>
+          <button @click="showAdRequestModal = true" class="btn-emerald btn-sm alliance-btn">
+            <span>Solicitar Espacio Publicitario</span>
+            <ArrowRight class="btn-icon" />
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Publicidad / Sponsor Banner below Nuestra Esencia -->
+    <AdBanner 
+      location="landing" 
+      @open-request-modal="showAdRequestModal = true" 
+    />
+
     <!-- Footer: Desarrollado por Teji link -->
     <footer class="landing-footer">
       <p>
@@ -80,15 +151,35 @@
         <a href="https://www.tejidev.com/" target="_blank" rel="noopener noreferrer" class="footer-link">Teji</a>
       </p>
     </footer>
+
+    <!-- Modal Formulario Patrocinio -->
+    <SponsorshipRequestModal 
+      v-if="showSponsorshipModal" 
+      @close="showSponsorshipModal = false" 
+    />
+
+    <!-- Modal Formulario Publicidad -->
+    <AdRequestModal 
+      v-if="showAdRequestModal" 
+      @close="showAdRequestModal = false" 
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { gsap } from 'gsap'
-import { ArrowRight, Heart, HeartHandshake, Activity } from 'lucide-vue-next'
+import { ArrowRight, Heart, HeartHandshake, Activity, Handshake, Megaphone } from 'lucide-vue-next'
+import { store } from '../lib/supabase.js'
+import ThemeSwitcher from './ThemeSwitcher.vue'
+import AdBanner from './AdBanner.vue'
+import AdRequestModal from './AdRequestModal.vue'
+import SponsorshipRequestModal from './SponsorshipRequestModal.vue'
 
-defineEmits(['open-auth'])
+defineEmits(['open-auth', 'open-profile', 'enter-dashboard'])
+
+const showAdRequestModal = ref(false)
+const showSponsorshipModal = ref(false)
 
 const heroRef = ref(null)
 const esenciaRef = ref(null)
@@ -138,8 +229,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 32px;
-  border: 1px solid rgba(216, 30, 91, 0.35);
-  background: linear-gradient(135deg, rgba(29, 26, 43, 0.98) 0%, rgba(18, 17, 26, 0.95) 100%);
+  border: 1px solid var(--border-soft);
+  background: var(--gradient-dark-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
@@ -162,9 +253,78 @@ onMounted(() => {
 .hero-card-header {
   width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.hero-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-profile-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.header-profile-btn:hover {
+  transform: scale(1.08);
+}
+
+.header-avatar-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-berry);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.header-initials-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--gradient-berry);
+  color: white;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--border-soft);
+}
+
+.btn-ghost-sm {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  color: var(--color-text-main);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost-sm:hover {
+  background: var(--gradient-berry);
+  color: white;
+  border-color: transparent;
 }
 
 .hero-card-body {
@@ -282,6 +442,93 @@ onMounted(() => {
   font-size: 0.95rem;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+/* Sección de Alianzas: Patrocinadores & Publicidad */
+.alliances-section {
+  width: 100%;
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 1.75rem;
+  color: var(--color-text-main);
+  font-family: var(--font-heading);
+}
+
+.section-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  max-width: 720px;
+}
+
+.alliances-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.alliance-card {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.alliance-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-berry);
+}
+
+.alliance-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(216, 30, 91, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alliance-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.color-emerald {
+  color: var(--color-emerald);
+}
+
+.alliance-card h3 {
+  font-size: 1.3rem;
+  color: var(--color-text-main);
+}
+
+.alliance-card p {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.alliance-btn {
+  margin-top: 8px;
 }
 
 .landing-footer {
