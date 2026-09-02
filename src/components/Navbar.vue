@@ -158,7 +158,6 @@ const tabs = computed(() => {
   const list = [
     { id: 'turnero', label: 'Turnero', icon: Calendar },
     { id: 'evento', label: 'Evento', icon: Vote },
-    { id: 'gastos', label: 'Gastos', icon: ColonIcon },
     { id: 'galeria', label: 'Fotos', icon: Image },
     { id: 'recap', label: 'Recap', icon: Award }
   ]

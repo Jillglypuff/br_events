@@ -30,10 +30,6 @@
           v-else-if="activeTab === 'evento'"
         />
 
-        <Gastos 
-          v-else-if="activeTab === 'gastos'"
-        />
-
         <Galeria 
           v-else-if="activeTab === 'galeria'"
         />

@@ -4,13 +4,13 @@
     <div class="gastos-header glass-card">
       <div class="header-info">
         <span class="badge-emerald">
-          <ColonIcon size="14" /> Control de Gastos Compartidos (CRC)
+          <ColonIcon size="14" /> Control de Gastos del Evento (CRC)
         </span>
         <h2>División de Cuenta (Splitwise BR)</h2>
         <p>Registra compras del evento en Colones (CRC ₡) y el sistema calcula quién le debe a quién automáticamente.</p>
       </div>
 
-      <button @click="showAddModal = true" class="btn-primary">
+      <button v-if="canEdit" @click="showAddModal = true" class="btn-primary">
         <PlusCircle class="btn-icon" />
         <span>Agregar Gasto (₡)</span>
       </button>
@@ -88,7 +88,7 @@
         </div>
 
         <div class="expense-list">
-          <div v-for="exp in store.expenses" :key="exp.id" class="expense-item">
+          <div v-for="exp in eventExpenses" :key="exp.id" class="expense-item">
             <div class="expense-icon-box">
               <ColonIcon size="18" />
             </div>
@@ -106,17 +106,20 @@
                 <CheckCircle2 class="icon-xs" /> Verificado
               </span>
               <button 
-                v-else 
+                v-else-if="canEdit"
                 @click="openVerifyModal(exp)"
                 class="badge-amber btn-verify-action" 
                 title="Subir comprobante para verificar"
               >
                 <Clock class="icon-xs" /> Pendiente de comprobante
               </button>
+              <span v-else class="badge-amber">
+                <Clock class="icon-xs" /> Pendiente de comprobante
+              </span>
             </div>
           </div>
 
-          <div v-if="store.expenses.length === 0" class="empty-expenses">
+          <div v-if="eventExpenses.length === 0" class="empty-expenses">
             <p>No hay gastos registrados para este evento aún.</p>
           </div>
         </div>
@@ -210,6 +213,17 @@ import ColonIcon from './ColonIcon.vue'
 import confetti from 'canvas-confetti'
 import { PlusCircle, CheckCircle2, Receipt, ListOrdered, Clock, Check } from 'lucide-vue-next'
 
+const props = defineProps({
+  canEdit: {
+    type: Boolean,
+    default: true
+  },
+  eventId: {
+    type: [String, Number],
+    default: null
+  }
+})
+
 const showAddModal = ref(false)
 const selectedExpenseForVerify = ref(null)
 const receiptInputRef = ref(null)
@@ -220,10 +234,17 @@ const newExpense = ref({
   amount: ''
 })
 
+const currentEventId = computed(() => props.eventId || (store.currentEvent ? (store.currentEvent.id || store.currentEvent.monthId) : null))
+
+const eventExpenses = computed(() => {
+  if (!currentEventId.value) return store.expenses
+  return store.expenses.filter(e => !e.eventId || e.eventId === currentEventId.value || e.eventId === store.currentEvent?.monthId)
+})
+
 const friendsCount = computed(() => store.friends.length)
 
 const totalExpense = computed(() => {
-  return store.expenses.reduce((acc, exp) => acc + Number(exp.amount), 0)
+  return eventExpenses.value.reduce((acc, exp) => acc + Number(exp.amount), 0)
 })
 
 const perPersonShare = computed(() => {
@@ -232,7 +253,7 @@ const perPersonShare = computed(() => {
 })
 
 const pendingExpensesCount = computed(() => {
-  return store.expenses.filter(e => e.status === 'pending').length
+  return eventExpenses.value.filter(e => e.status === 'pending').length
 })
 
 const friendBalances = computed(() => {
@@ -241,7 +262,7 @@ const friendBalances = computed(() => {
     balances[f.name] = 0
   })
 
-  store.expenses.forEach(exp => {
+  eventExpenses.value.forEach(exp => {
     if (balances[exp.paidBy] !== undefined) {
       balances[exp.paidBy] += Number(exp.amount)
     }
@@ -289,7 +310,10 @@ const settlements = computed(() => {
 })
 
 const submitExpense = () => {
-  store.addExpense(newExpense.value)
+  store.addExpense({
+    ...newExpense.value,
+    eventId: currentEventId.value
+  })
   showAddModal.value = false
   newExpense.value = { description: '', paidBy: store.currentUser ? store.currentUser.name : '', amount: '' }
 }
