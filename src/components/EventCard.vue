@@ -12,14 +12,40 @@
       </div>
 
       <div class="event-hero-body">
-        <div class="organizer-header">
-          <img v-if="event.organizerAvatar" :src="event.organizerAvatar" alt="Organizadora" class="organizer-img" />
-          <div v-else class="organizer-initials">
-            {{ store.getInitials(event.organizer) }}
+        <div class="organizer-header flex-wrap">
+          <div class="organizer-main-info">
+            <img v-if="event.organizerAvatar" :src="event.organizerAvatar" alt="Organizadora" class="organizer-img" />
+            <div v-else class="organizer-initials">
+              {{ store.getInitials(event.organizer) }}
+            </div>
+            <div>
+              <span class="organized-by">Organizado por</span>
+              <strong class="organizer-name">{{ event.organizer }}</strong>
+              <div v-if="event.coOrganizer" class="co-organizer-badge-inline">
+                <Users class="badge-icon-xs" /> Colaboradora: <strong>{{ event.coOrganizer }}</strong>
+              </div>
+            </div>
           </div>
-          <div>
-            <span class="organized-by">Organizado por</span>
-            <strong class="organizer-name">{{ event.organizer }}</strong>
+
+          <!-- Selector de Amiga Colaboradora (Solo visible para la dueña del evento) -->
+          <div v-if="isOwner" class="co-organizer-selector-card">
+            <label class="co-org-label">
+              <UserPlus class="inline-icon" /> Asignar Amiga Colaboradora:
+            </label>
+            <select 
+              :value="event.coOrganizer || ''" 
+              @change="handleCoOrganizerChange($event.target.value)" 
+              class="form-select-sm co-org-select"
+            >
+              <option value="">(Ninguna seleccionada)</option>
+              <option 
+                v-for="f in store.friends.filter(f => f.name !== event.organizer)" 
+                :key="f.id" 
+                :value="f.name"
+              >
+                {{ f.name }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -53,6 +79,15 @@
       location="evento" 
       @open-request-modal="showAdRequestModal = true" 
     />
+
+    <!-- Banner informativo para invitadas (solo si no es dueña ni colaboradora) -->
+    <div v-if="!canEditEvent" class="guest-mode-banner glass-card animate-fade-in">
+      <ShieldAlert class="guest-banner-icon" />
+      <div class="guest-banner-text">
+        <strong>Modo Invitada</strong>
+        <p>Solo la encargada (<strong>{{ event.organizer }}</strong>){{ event.coOrganizer ? ` y su colaboradora (${event.coOrganizer})` : '' }} pueden modificar datos del evento o crear encuestas. Tú puedes confirmar asistencia y responder las encuestas.</p>
+      </div>
+    </div>
 
     <!-- Attendance Confirmation RSVP Module (ONLY SHOWN WHEN CONFIRMED DATE EXISTS) -->
     <div v-if="event.confirmedDate" class="module-card glass-card rsvp-module animate-fade-in">
@@ -136,9 +171,9 @@
               <h3>Encuestas del Evento</h3>
             </div>
             
-            <!-- ONLY SHOW CREATE POLL BUTTON IF ORGANIZER -->
+            <!-- ONLY SHOW CREATE POLL BUTTON IF ORGANIZER OR COLLABORATOR -->
             <button 
-              v-if="isOrganizer"
+              v-if="canEditEvent"
               @click="showCreatePollModal = true" 
               class="btn-primary btn-sm"
             >
@@ -151,7 +186,7 @@
           <div v-if="polls.length === 0" class="empty-polls-box">
             <Vote class="empty-poll-icon" />
             <p>No hay encuestas creadas en este momento.</p>
-            <button v-if="isOrganizer" @click="showCreatePollModal = true" class="btn-add-option-modern">
+            <button v-if="canEditEvent" @click="showCreatePollModal = true" class="btn-add-option-modern">
               <Plus class="btn-icon-sm" /> Crear la primera encuesta
             </button>
           </div>
@@ -167,7 +202,7 @@
                 <h4 class="poll-question-title">{{ p.question }}</h4>
 
                 <button 
-                  v-if="isOrganizer"
+                  v-if="canEditEvent"
                   @click="deletePoll(p.id)"
                   class="btn-icon-only"
                   title="Eliminar encuesta"
@@ -199,7 +234,7 @@
                   </div>
 
                   <!-- Organizer Date Selection Action (HIGH CONTRAST & LEGIBLE) -->
-                  <div v-if="isOrganizer" class="organizer-option-action">
+                  <div v-if="canEditEvent" class="organizer-option-action">
                     <button 
                       v-if="event.confirmedDate === opt.dateText"
                       class="btn-date-selected" 
@@ -219,7 +254,7 @@
               </div>
 
               <!-- Add Option Inline Form -->
-              <div class="add-option-box">
+              <div v-if="canEditEvent" class="add-option-box">
                 <div v-if="addingOptionPollId === p.id" class="add-option-inline">
                   <input 
                     v-model="newOptionInput"
@@ -253,7 +288,7 @@
             </div>
 
             <button 
-              v-if="isOrganizer"
+              v-if="canEditEvent"
               @click="isEditingLocation = !isEditingLocation"
               class="btn-icon-only"
               title="Editar ubicación del evento"
@@ -263,7 +298,7 @@
           </div>
 
           <!-- Location Edit Form (ONLY SHOWN TO ORGANIZER WHEN EDITING) -->
-          <div v-if="isOrganizer && isEditingLocation" class="location-form animate-fade-in">
+          <div v-if="canEditEvent && isEditingLocation" class="location-form animate-fade-in">
             <div class="form-group">
               <label>Nombre del Lugar / Dirección</label>
               <input 
@@ -351,7 +386,7 @@
 
             <!-- Organizer Toggle Button (Estandarizado y Moderno) -->
             <button 
-              v-if="isOrganizer"
+              v-if="canEditEvent"
               @click="store.toggleEventChecklistVisibility()"
               class="btn-secondary btn-sm"
             >
@@ -362,7 +397,7 @@
           </div>
 
           <!-- Add Checklist Item Form (Visible to Organizer or if Public) -->
-          <div v-if="event.showChecklist || isOrganizer" class="add-checklist-box">
+          <div v-if="event.showChecklist || canEditEvent" class="add-checklist-box">
             <div class="add-checklist-row">
               <input 
                 v-model="newChecklistItemText"
@@ -378,7 +413,7 @@
           </div>
 
           <!-- Public Checklist Items -->
-          <div v-if="event.showChecklist || isOrganizer" class="checklist-items">
+          <div v-if="event.showChecklist || canEditEvent" class="checklist-items">
             <div 
               v-for="item in event.checklist" 
               :key="item.id"
@@ -394,7 +429,7 @@
                 <span class="item-name">{{ item.item }}</span>
                 <span class="item-assignee">Encargada: <strong>{{ item.assignedTo }}</strong></span>
               </div>
-              <button v-if="isOrganizer" @click="deleteChecklistItem(item.id)" class="btn-remove-item" title="Eliminar">
+              <button v-if="canEditEvent" @click="deleteChecklistItem(item.id)" class="btn-remove-item" title="Eliminar">
                 <Trash2 class="icon-sm" />
               </button>
             </div>
@@ -473,6 +508,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Gastos Integrados del Evento -->
+    <div class="event-gastos-wrapper">
+      <Gastos :can-edit="canEditEvent" :event-id="event.id || event.monthId" />
     </div>
 
     <!-- Modal: Crear Nueva Encuesta -->
@@ -626,13 +666,14 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { store } from '../lib/supabase.js'
 import { toast } from '../lib/toast.js'
 import EventReviews from './EventReviews.vue'
+import Gastos from './Gastos.vue'
 import AdBanner from './AdBanner.vue'
 import AdRequestModal from './AdRequestModal.vue'
 import confetti from 'canvas-confetti'
 import { 
   Vote, MapPin, Navigation, Compass, CalendarPlus, CalendarCheck, CheckSquare, 
   Car, Sparkles, User, UserCheck, Lock, Plus, Trash2, CheckCircle2, Clock, Edit3,
-  Eye, EyeOff, HelpCircle, XCircle 
+  Eye, EyeOff, HelpCircle, XCircle, UserPlus, ShieldAlert, Users
 } from 'lucide-vue-next'
 
 const showAdRequestModal = ref(false)
@@ -643,10 +684,28 @@ onMounted(() => {
 
 const event = computed(() => store.currentEvent)
 
-const isOrganizer = computed(() => {
+const isOwner = computed(() => {
   if (!store.currentUser) return false
-  return store.currentUser.name === event.value.organizer || store.currentUser.role === 'admin'
+  return store.currentUser.id === event.value.organizerId ||
+         store.currentUser.name === event.value.organizer ||
+         store.currentUser.role === 'admin'
 })
+
+const isCoOrganizer = computed(() => {
+  if (!store.currentUser) return false
+  return (event.value.coOrganizerId && store.currentUser.id === event.value.coOrganizerId) ||
+         (event.value.coOrganizer && store.currentUser.name === event.value.coOrganizer)
+})
+
+const canEditEvent = computed(() => {
+  return isOwner.value || isCoOrganizer.value
+})
+
+const isOrganizer = computed(() => canEditEvent.value)
+
+const handleCoOrganizerChange = (coOrgName) => {
+  store.setCoOrganizer(coOrgName)
+}
 
 // Polls
 const polls = computed(() => {
@@ -1738,9 +1797,103 @@ END:VCALENDAR`
   margin-top: 10px;
 }
 
+/* Flex Wrap & Co-organizer Styles */
+.flex-wrap {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.co-organizer-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #3BCEAC;
+  background: rgba(42, 157, 143, 0.15);
+  border: 1px solid rgba(42, 157, 143, 0.3);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  margin-top: 4px;
+}
+
+.badge-icon-xs {
+  width: 12px;
+  height: 12px;
+}
+
+.co-organizer-selector-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-soft);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  margin-left: auto;
+}
+
+.co-org-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.co-org-select {
+  background: var(--color-bg-input);
+  color: var(--color-text-main);
+  border: 1px solid var(--border-soft);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* Guest Mode Banner */
+.guest-mode-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.guest-banner-icon {
+  width: 24px;
+  height: 24px;
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.guest-banner-text strong {
+  color: #fbbf24;
+  font-size: 0.95rem;
+  display: block;
+}
+
+.guest-banner-text p {
+  color: var(--color-text-main);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.event-gastos-wrapper {
+  margin-top: 30px;
+}
+
 @media (max-width: 768px) {
   .event-grid {
     grid-template-columns: 1fr;
+  }
+  .co-organizer-selector-card {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
   }
 }
 </style>

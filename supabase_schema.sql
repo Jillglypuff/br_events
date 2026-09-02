@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS events (
   banner TEXT,
   organizer_id UUID REFERENCES users(id) ON DELETE SET NULL,
   organizer_name TEXT,
+  co_organizer_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  co_organizer_name TEXT,
   confirmed_date TEXT,
   location TEXT,
   maps_url TEXT,

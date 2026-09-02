@@ -46,6 +46,8 @@ const INITIAL_CURRENT_EVENT = {
   title: 'Evento del Mes',
   organizer: 'Sin Asignar',
   organizerAvatar: null,
+  coOrganizer: null,
+  coOrganizerId: null,
   description: 'Reunión mensual de amigas. Crea encuestas para votar detalles y fechas.',
   banner: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1000',
   status: 'unassigned',
@@ -172,6 +174,8 @@ export const store = reactive({
             m.theme = ev.theme
             m.organizerId = ev.organizer_id
             m.organizerName = ev.organizer_name
+            m.coOrganizerId = ev.co_organizer_id
+            m.coOrganizerName = ev.co_organizer_name
             m.status = ev.status || 'upcoming'
             m.image = ev.banner
           }
@@ -183,6 +187,7 @@ export const store = reactive({
       if (!eErr && expensesData) {
         this.expenses = expensesData.map(e => ({
           id: e.id,
+          eventId: e.event_id || (this.currentEvent ? this.currentEvent.id : null),
           description: e.description,
           paidBy: e.paid_by,
           amount: Number(e.amount),
@@ -787,6 +792,33 @@ export const store = reactive({
     }
   },
 
+  setCoOrganizer(coOrganizerName) {
+    const friend = this.friends.find(f => f.name === coOrganizerName)
+    this.currentEvent.coOrganizer = coOrganizerName || null
+    this.currentEvent.coOrganizerId = friend ? friend.id : null
+    saveState('currentEvent', this.currentEvent)
+
+    const month = this.months.find(m => m.id === this.currentEvent.monthId)
+    if (month) {
+      month.coOrganizerName = coOrganizerName || null
+      month.coOrganizerId = friend ? friend.id : null
+      saveState('months', this.months)
+    }
+
+    if (supabase && this.currentEvent.monthId) {
+      supabase.from('events').update({
+        co_organizer_id: friend ? friend.id : null,
+        co_organizer_name: coOrganizerName || null
+      }).match({ month_id: this.currentEvent.monthId, year: this.selectedYear }).then()
+    }
+
+    if (coOrganizerName) {
+      toast.success(`¡${coOrganizerName} asignada como amiga colaboradora!`)
+    } else {
+      toast.info('Se removió la colaboradora del evento.')
+    }
+  },
+
   ensurePollsInit() {
     if (!this.currentEvent) return
     if (!Array.isArray(this.currentEvent.polls)) {
@@ -973,8 +1005,10 @@ export const store = reactive({
   },
 
   async addExpense(expense) {
+    const currentEventId = this.currentEvent ? (this.currentEvent.id || `evt-${this.currentEvent.monthId}`) : 'evt-activo'
     const newExp = {
       id: `exp-${Date.now()}`,
+      eventId: expense.eventId || currentEventId,
       description: expense.description,
       paidBy: expense.paidBy,
       amount: Number(expense.amount),
